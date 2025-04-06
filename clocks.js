@@ -33,7 +33,16 @@ if (input.cmd === "clock-report") {
         }
     }
 
-    dv.paragraph(durations);
+    // output clock report as nested list
+    s = `Total time spent: ${renderMins(total)}\n`;
+    for (const project in durations) {
+        s += `- **${project}**: ${renderMins(durations[project].minutes)}\n`;
+        for (const task in durations[project].tasks) {
+            s += `  - *${task}:* ${renderMins(durations[project].tasks[task])}\n`;
+        }
+    }
+    dv.paragraph(s);
+
     // dv.table(
     //     ["Project", "Task", "Duration"],
     //     [
@@ -41,6 +50,15 @@ if (input.cmd === "clock-report") {
     //         ["", "task", 12],
     //     ],
     // );
+}
+
+// 128h24m vs 128h 24m vs 128:24
+function renderMins(minutes) {
+    // convert minutes to hours and minutes
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    const hoursStr = hours > 0 ? `${hours}h ` : "";
+    return `${hoursStr}${mins}m (${(minutes / 60).toFixed(2)})`;
 }
 
 function parsePageClocks(page) {
