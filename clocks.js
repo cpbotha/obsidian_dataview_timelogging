@@ -10,38 +10,54 @@
 
 // dispatcher
 if (input.cmd === "clock-report") {
-    dv.header(2, "Clock Report");
+    //dv.header(2, "Clock Report");
     ptClocks = parsePageClocks(dv.current());
     // for debugging in devtools, insert variable in global scope
     window.ptClocks = ptClocks;
 
-    // project: total duration
-    // task: sum of duration for all clocks
-    durations = {};
-    total = 0;
+    s = renderClockReport(ptClocks);
+    dv.paragraph(s);
+
+    // map from date to array of task descriptions according to the clock items for that day
+    days = {};
     for (const project in ptClocks) {
-        durations[project] = { minutes: 0, tasks: {} };
         for (const task in ptClocks[project]) {
-            durations[project].tasks[task] = 0;
             for (const clock of ptClocks[project][task]) {
-                // add to the task minutes
-                durations[project].tasks[task] += clock.duration;
-                // add to the total project minutes
-                durations[project].minutes += clock.duration;
-                total += clock.duration;
+                // clock.start and clock.end are Luxon DateTime objects
+                // get only the date part
+                const startDate = clock.start.toFormat("yyyy-MM-dd ccc");
+                if (!(startDate in days)) {
+                    days[startDate] = [];
+                }
+                // store object with task name and clock item properties
+                days[startDate].push({ project: project, task: task, ...clock });
             }
         }
     }
 
-    // output clock report as nested list
-    s = `Total time spent: ${renderMins(total)}\n`;
-    for (const project in durations) {
-        s += `- **${project}**: ${renderMins(durations[project].minutes)}\n`;
-        for (const task in durations[project].tasks) {
-            s += `  - *${task}:* ${renderMins(durations[project].tasks[task])}\n`;
-        }
+    for (const day in days) {
+        // sort by start time
+        days[day].sort((a, b) => a.start - b.start);
     }
-    dv.paragraph(s);
+
+    for (const day in days) {
+        dv.header(3, day);
+        dv.table(
+            ["Timeslot", "Duration", "Project / Task", "Description"],
+            days[day].map((ptClock) => [
+                `${ptClock.start.toFormat("HH:mm")} - ${ptClock.end.toFormat("HH:mm")}`,
+                renderMins(ptClock.duration, false),
+                `[[#${ptClock.project}]] / ${ptClock.task}`,
+                ptClock.description,
+            ]),
+        );
+        // sum up the durations for this day
+        dayMinutes = 0;
+        for (const ptClock of days[day]) {
+            dayMinutes += ptClock.duration;
+        }
+        dv.paragraph(`Total time spent: ${renderMins(dayMinutes)}`);
+    }
 
     // dv.table(
     //     ["Project", "Task", "Duration"],
@@ -53,12 +69,54 @@ if (input.cmd === "clock-report") {
 }
 
 // 128h24m vs 128h 24m vs 128:24
-function renderMins(minutes) {
+function renderMins(minutes, showFraction = true) {
     // convert minutes to hours and minutes
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
-    const hoursStr = hours > 0 ? `${hours}h ` : "";
-    return `${hoursStr}${mins}m (${(minutes / 60).toFixed(2)})`;
+    const hoursStr = hours > 0 ? `${hours}h·` : "";
+    const fractionStr = showFraction ? ` (${(minutes / 60).toFixed(2)})` : "";
+    return `${hoursStr}${mins}m${fractionStr}`;
+}
+
+function renderClockReport(ptClocks) {
+    // project: total duration
+    // task: sum of duration for all clocks
+    durations = {};
+    total = 0;
+    earliest = null;
+    latest = null;
+    for (const project in ptClocks) {
+        durations[project] = { minutes: 0, tasks: {} };
+        for (const task in ptClocks[project]) {
+            durations[project].tasks[task] = 0;
+            for (const clock of ptClocks[project][task]) {
+                // add to the task minutes
+                durations[project].tasks[task] += clock.duration;
+                // add to the total project minutes
+                durations[project].minutes += clock.duration;
+                total += clock.duration;
+                // we want to know what the total timespan of logged time is
+                if (!earliest || clock.start < earliest) {
+                    earliest = clock.start;
+                }
+                if (!latest || clock.end > latest) {
+                    latest = clock.end;
+                }
+            }
+        }
+    }
+
+    // output clock report as nested list
+    const rangeDateFormatStr = "ccc yyyy-MM-dd HH:mm";
+    s = `Total time clocked from ${earliest.toFormat(rangeDateFormatStr)} to ${latest.toFormat(rangeDateFormatStr)}: **${renderMins(total)}**\n`;
+    for (const project in durations) {
+        s += `- **${project}**: ${renderMins(durations[project].minutes)}\n`;
+        for (const task in durations[project].tasks) {
+            s += `  - *${task}:* ${renderMins(durations[project].tasks[task])}\n`;
+        }
+    }
+
+    return s;
 }
 
 function parsePageClocks(page) {
