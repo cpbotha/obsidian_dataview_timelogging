@@ -40,7 +40,9 @@ if (input.cmd === "clock-report") {
         days[day].sort((a, b) => a.start - b.start);
     }
 
-    for (const day in days) {
+    // sort the days by date
+    const sortedDays = Object.keys(days).sort().reverse();
+    for (const day of sortedDays) {
         dv.header(3, day);
         dv.table(
             ["Timeslot", "Duration", "Project / Task", "Description"],
