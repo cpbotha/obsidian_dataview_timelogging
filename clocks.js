@@ -121,7 +121,37 @@ function renderClockReport(ptClocks) {
     return s;
 }
 
-function parsePageClocks(page) {
+function extractOrgTimestampRange(line) {
+    // matches e.g. <2025-01-01 Mon 12:00-14:00>
+    // we want to convert to Luxon DateTime objects for start and end
+    const regex = /(?:<|&lt;)(\d{4}-\d{2}-\d{2} \w{3}) (\d{2}:\d{2}(?:-\d{2}:\d{2})?)(?:>|&gt;)/g;
+    const matches = regex.exec(line);
+    if (matches) {
+        // matches[1] is the date, matches[2] is the time
+        const dateStr = matches[1];
+        const timeStr = matches[2];
+        // split timeStr on -
+        const [startTime, endTime] = timeStr.split("-");
+        if (!endTime) {
+            return null; // no end time, so we cannot parse this
+        }
+        // create Luxon DateTime objects
+        const start = dv.luxon.DateTime.fromFormat(`${dateStr} ${startTime}`, "yyyy-MM-dd ccc HH:mm");
+        let end;
+        if (endTime) {
+            end = dv.luxon.DateTime.fromFormat(`${dateStr} ${endTime}`, "yyyy-MM-dd ccc HH:mm");
+        } else {
+            // if no end time, use start time as end time
+            end = start;
+        }
+        // also return line with the whole matched string removed
+        const textWithoutRange = line.replace(matches[0], "").trim();
+        return { start, end, title: textWithoutRange };
+    }
+    return null; // no match
+}
+
+function parsePageClocks(page, timeRangeStyle = "org") {
     // https://blacksmithgu.github.io/obsidian-dataview/api/code-reference/
     curProject = null;
     curTask = null;
@@ -135,12 +165,30 @@ function parsePageClocks(page) {
             //console.log("PROJECT:", curProject)
         }
 
+        let timeRange = null;
+        if (timeRangeStyle === "org") {
+            timeRange = extractOrgTimestampRange(listItem.text);
+        } else {
+            if (listItem.start?.isLuxonDateTime && listItem.end?.isLuxonDateTime) {
+                // the first inline metadata [bleh:: or (bleh:: is the end of the item description
+                const title = listItem.text.replace(/(\[.*?::.*?\]|\(.*?::.*?\)).*/g, "").trim();
+                timeRange = { start: listItem.start, end: listItem.end, title };
+            }
+        }
+
+        let title;
+        if (timeRange) {
+            // if we have a time range, then the title is the text without the time range
+            title = timeRange.title;
+        } else {
+            // no time range, so the title is just the text
+            title = listItem.text.trim();
+        }
+
         // if item has a parent item and it as valid start and end timestamps, then it is a clock item
-        const isClockItem = listItem.parent && listItem.start?.isLuxonDateTime && listItem.end?.isLuxonDateTime;
+        const isClockItem = listItem.parent && timeRange;
         // top-level items are task items
         const isTaskItem = !listItem.parent;
-        // the first inline metadata [bleh:: or (bleh:: is the end of the item description
-        const title = listItem.text.replace(/(\[.*?::.*?\]|\(.*?::.*?\)).*/g, "").trim();
 
         //console.log("ITEM:", listItem, isClockItem, isTaskItem, title);
         if (isTaskItem) {
@@ -158,12 +206,12 @@ function parsePageClocks(page) {
             // stricter check here that both start and end could be parsed
             if (curProject && curTask) {
                 // minutes
-                duration = (listItem.end - listItem.start) / 1000 / 60;
+                duration = (timeRange.end - timeRange.start) / 1000 / 60;
                 ptClocks[curProject][curTask].push({
                     description: title,
                     duration,
-                    start: listItem.start,
-                    end: listItem.end,
+                    start: timeRange.start,
+                    end: timeRange.end,
                 });
             }
         }
