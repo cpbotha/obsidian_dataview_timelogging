@@ -124,7 +124,7 @@ function renderClockReport(ptClocks) {
 function extractOrgTimestampRange(line) {
     // matches e.g. <2025-01-01 Mon 12:00-14:00>
     // we want to convert to Luxon DateTime objects for start and end
-    const regex = /(?:<|&lt;)(\d{4}-\d{2}-\d{2} \w{3}) (\d{2}:\d{2}(?:-\d{2}:\d{2})?)(?:>|&gt;)/g;
+    const regex = /(?:<|&lt;)(?:\[\[)?(\d{4}-\d{2}-\d{2})(?:\]\])? \w{3} (\d{2}:\d{2}(?:-\d{2}:\d{2})?)(?:>|&gt;)/g;
     const matches = regex.exec(line);
     if (matches) {
         // matches[1] is the date, matches[2] is the time
@@ -136,10 +136,10 @@ function extractOrgTimestampRange(line) {
             return null; // no end time, so we cannot parse this
         }
         // create Luxon DateTime objects
-        const start = dv.luxon.DateTime.fromFormat(`${dateStr} ${startTime}`, "yyyy-MM-dd ccc HH:mm");
+        const start = dv.luxon.DateTime.fromFormat(`${dateStr} ${startTime}`, "yyyy-MM-dd HH:mm");
         let end;
         if (endTime) {
-            end = dv.luxon.DateTime.fromFormat(`${dateStr} ${endTime}`, "yyyy-MM-dd ccc HH:mm");
+            end = dv.luxon.DateTime.fromFormat(`${dateStr} ${endTime}`, "yyyy-MM-dd HH:mm");
         } else {
             // if no end time, use start time as end time
             end = start;
