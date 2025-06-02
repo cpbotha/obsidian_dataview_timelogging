@@ -140,7 +140,7 @@ function parsePageClocks(page) {
         // top-level items are task items
         const isTaskItem = !listItem.parent;
         // the first inline metadata [bleh:: or (bleh:: is the end of the item description
-        const title = listItem.text.replace(/(\[.*?::.*?\]|\(.*?\)).*/g, "").trim();
+        const title = listItem.text.replace(/(\[.*?::.*?\]|\(.*?::.*?\)).*/g, "").trim();
 
         //console.log("ITEM:", listItem, isClockItem, isTaskItem, title);
         if (isTaskItem) {
@@ -153,7 +153,7 @@ function parsePageClocks(page) {
                 }
             }
         } else if (isClockItem) {
-            console.log("CLOCK ITEM:", title);
+            //console.log("CLOCK ITEM:", title);
             // now title is the description of this clock item
             // stricter check here that both start and end could be parsed
             if (curProject && curTask) {
