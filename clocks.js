@@ -151,7 +151,8 @@ function extractOrgTimestampRange(line) {
     return null; // no match
 }
 
-function parsePageClocks(page, timeRangeStyle = "org") {
+// this supports both org-style timestamp ranges and dataview start/end datetime fields
+function parsePageClocks(page) {
     // https://blacksmithgu.github.io/obsidian-dataview/api/code-reference/
     curProject = null;
     curTask = null;
@@ -165,15 +166,13 @@ function parsePageClocks(page, timeRangeStyle = "org") {
             //console.log("PROJECT:", curProject)
         }
 
-        let timeRange = null;
-        if (timeRangeStyle === "org") {
-            timeRange = extractOrgTimestampRange(listItem.text);
-        } else {
-            if (listItem.start?.isLuxonDateTime && listItem.end?.isLuxonDateTime) {
-                // the first inline metadata [bleh:: or (bleh:: is the end of the item description
-                const title = listItem.text.replace(/(\[.*?::.*?\]|\(.*?::.*?\)).*/g, "").trim();
-                timeRange = { start: listItem.start, end: listItem.end, title };
-            }
+        // first try to extract org-style
+        let timeRange = extractOrgTimestampRange(listItem.text);
+        // if that did not work, try to extract dataview-field-style Luxon DateTime objects
+        if (!timeRange && listItem.start?.isLuxonDateTime && listItem.end?.isLuxonDateTime) {
+            // the first inline metadata [bleh:: or (bleh:: is the end of the item description
+            const title = listItem.text.replace(/(\[.*?::.*?\]|\(.*?::.*?\)).*/g, "").trim();
+            timeRange = { start: listItem.start, end: listItem.end, title };
         }
 
         let title;
