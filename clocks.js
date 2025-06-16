@@ -1,8 +1,15 @@
 // This is a DataviewJS script for Obsidian to parse clock items from a page
 // and generate a report of the clock items grouped by project and task.
+// copyright 2024 Charl P. Botha <cpbotha@vxlabs.com>
+//
+// To use, add this to a markdown file with timelogging entries
+// ## Clock report
+//
+// ```dataviewjs
+// await dv.view('dataview_timelogging/clocks', {cmd: "clock-report"})
+// ```
 //
 // when working on this script, you have to navigate away from and then back to the page
-// copyright 2024 Charl P. Botha <cpbotha@vxlabs.com>
 
 // to experiment with code live, do the following in devtools:
 // dv = app.plugins.plugins.dataview.api;
