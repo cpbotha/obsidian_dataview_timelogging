@@ -167,6 +167,9 @@ function parsePageClocks(page) {
     for (const listItem of page.file.lists) {
         if (listItem.header.type === "header" && listItem.header.subpath !== curProject) {
             curProject = listItem.header.subpath;
+            // we have just entered a new project, so we have to reset the current task
+            // to prevent the bug where a same-named task at the start of a new project breaks parsing!
+            curTask = null;
             if (!(curProject in ptClocks)) {
                 ptClocks[curProject] = {};
             }
